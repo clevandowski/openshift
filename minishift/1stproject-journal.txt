@@ -1,0 +1,334 @@
+-------------------------------------------------------------------------------------
+# Démarrer openshift avec minishift
+
+## Clean d'une précédente exécution
+
+rm -rf ~/.minishift
+Note: Dans l'IHM de VirtualBox, vérifier que toutes les VMs "minishift" sont bien supprimées
+
+## Téléchargement / Installation / Démarrage
+
+* https://docs.openshift.org/latest/minishift/getting-started/installing.html
+* https://docs.openshift.org/latest/minishift/getting-started/quickstart.html
+
+Après 
+* La console d'openshift est disponible sur https://192.168.99.100:8443/console
+* La commande "oc" est accessible dans le path en ligne de commande ("oc status" doit fonctionner)
+
+Pour faciliter le démarrage de minishift, voici un petit script "start_minishift.sh"
+
+``` 
+#!/bin/bash
+
+minishift config set memory 10240
+minishift config set cpus 6
+minishift start --vm-driver virtualbox
+```
+
+## Connexion en ligne de commande
+
+
+oc login -u system:admin
+oc login -u developer:developer
+
+
+
+-------------------------------------------------------------------------------------
+# Créer un projet
+
+
+## En ligne de commande
+!!! Pour l'instant, si je crée un projet par la ligne de commande il n'apparait pas dans l'IHM !!!
+
+oc login -u system:admin
+oc new-project my-project
+
+## Via l'IHM
+
+* Ouvrir dans l'explorateur "https://192.168.99.100:8443/console"
+* Se connecter avec le user "system", mdp "admin"
+* Créer le projet "my-project"
+* Sur la page de sélection d'une application, cliquer sur "my-project" en haut à gauche pour aller à la page du projet et éviter de créer une application via l'IHM
+
+-------------------------------------------------------------------------------------
+# Créer un utilisateur avec le profil "edit" pour le nouveau projet
+
+## En ligne de commande
+
+@TODO
+
+## Via l'IHM
+
+* Se connecter en system/admin sur l'IHM ("https://192.168.99.100:8443/console")
+* Sélectionner le projet "my-project"
+* Menu "Resources > Membership", cliquer sur "Edit Membership" en haut à droite
+* Créer un utilisateur perso (exemple: cyrille) et lui sélectionner le rôle "Edit". 
+
+Note: Le mdp est demandé mais on peut mettre n'importe quoi (IHM && CLI)
+
+-------------------------------------------------------------------------------------
+# Créer une application
+
+```
+$ oc login -u cyrille
+$ oc new-app registry.access.redhat.com/redhat-openjdk-18/openjdk18-openshift~https://github.com/clevandowski/spring-boot-hello-world.git
+```
+
+* registry.access.redhat.com/redhat-openjdk-18/openjdk18-openshift est l'image du container qui va builder et démarrer le projet
+* https://github.com/clevandowski/spring-boot-hello-world.git est le repo git avec le code source de l'application cible
+
+==> On voit sur l'IHM que l'application est créée qu'un build sur le projet est automatiquement lancé
+==> Pour le moment, l'application n'est pas accessible via l'explorateur car elle n'a pas de route, elle n'a qu'un cluster interne
+
+-------------------------------------------------------------------------------------
+# Exposer une application
+
+```
+$ oc expose services spring-boot-hello-world
+route "spring-boot-hello-world" exposed
+```
+
+```
+$ oc describe route spring-boot-hello-world
+Name:			spring-boot-hello-world
+Namespace:		my-project
+Created:		3 minutes ago
+Labels:			app=spring-boot-hello-world
+Annotations:		openshift.io/host.generated=true
+Requested Host:		spring-boot-hello-world-my-project.192.168.99.100.nip.io
+			  exposed on router router 3 minutes ago
+Path:			<none>
+TLS Termination:	<none>
+Insecure Policy:	<none>
+Endpoint Port:		8080-tcp
+
+Service:	spring-boot-hello-world
+Weight:		100 (100%)
+Endpoints:	172.17.0.2:8080, 172.17.0.2:8443, 172.17.0.2:8778
+```
+
+L'application est exposée sur "http://spring-boot-hello-world-my-project.192.168.99.100.nip.io"
+
+Pour accéder à ce nom de domaine, pour le moment j'écris cette entrée dans le fichier /etc/hosts de la machine qui héberge l'instance de minishift
+
+```
+192.168.99.100	spring-boot-hello-world-my-project.192.168.99.100.nip.io
+```
+
+192.168.99.100 est l'IP de Minishift vue par mon système. 
+Pour avoir cette info, taper
+
+```
+$ minishift ip
+192.168.99.100
+```
+
+==> On accède maintenant à l'application déployée sur 
+http://spring-boot-hello-world-my-project.192.168.99.100.nip.io/
+
+-------------------------------------------------------------------------------------
+# Voir les infos détaillées de l'application déployée en CLI
+
+## Build
+
+```
+$ oc get builds
+NAME                        TYPE      FROM          STATUS     STARTED         DURATION
+spring-boot-hello-world-1   Source    Git@a80dfde   Complete   2 minutes ago   1m19s
+```
+
+```
+$ oc describe build spring-boot-hello-world-1
+Name:		spring-boot-hello-world-1
+Namespace:	my-project
+Created:	2 minutes ago
+...
+Events:
+  FirstSeen	LastSeen	Count	From				SubObjectPath			Type		Reason		Message
+  ---------	--------	-----	----				-------------			--------	------		-------
+  2m		2m		1	{default-scheduler }						Normal		Scheduled	Successfully assigned spring-boot-hello-world-1-build to 192.168.99.100
+  2m		2m		1	{kubelet 192.168.99.100}	spec.containers{sti-build}	Normal		Pulled		Container image "openshift/origin-sti-builder:v1.5.1" already present on machine
+  2m		2m		1	{kubelet 192.168.99.100}	spec.containers{sti-build}	Normal		Created		Created container with docker id 433a746b6a3c; Security:[seccomp=unconfined]
+  2m		2m		1	{kubelet 192.168.99.100}	spec.containers{sti-build}	Normal		Started		Started container with docker id 433a746b6a3c
+```
+==> Le build est terminé avec succès, et l'application est démarrée automatiquement
+
+## Service
+
+```
+$ oc get services
+NAME                      CLUSTER-IP    EXTERNAL-IP   PORT(S)                      AGE
+spring-boot-hello-world   172.30.81.8   <none>        8080/TCP,8443/TCP,8778/TCP   7m
+```
+
+```
+$ oc describe service spring-boot-hello-world
+Name:			spring-boot-hello-world
+Namespace:		my-project
+Labels:			app=spring-boot-hello-world
+Selector:		app=spring-boot-hello-world,deploymentconfig=spring-boot-hello-world
+Type:			ClusterIP
+IP:				172.30.81.8
+Port:			8080-tcp	8080/TCP
+Endpoints:		172.17.0.2:8080
+Port:			8443-tcp	8443/TCP
+Endpoints:		172.17.0.2:8443
+Port:			8778-tcp	8778/TCP
+Endpoints:		172.17.0.2:8778
+Session Affinity:	None
+No events.
+```
+
+## Deployment Config
+
+```
+$ oc get deploymentconfig
+NAME                      REVISION   DESIRED   CURRENT   TRIGGERED BY
+spring-boot-hello-world   1          1         1         config,image(spring-boot-hello-world:latest)
+```
+
+```
+$ oc get deploymentconfig
+NAME                      REVISION   DESIRED   CURRENT   TRIGGERED BY
+spring-boot-hello-world   1          1         1         config,image(spring-boot-hello-world:latest)
+cyrille@cyrille-XPS-15-9560:~/Documents/openshift/minishift$ oc describe deploymentconfig spring-boot-hello-world
+Name:		spring-boot-hello-world
+Namespace:	my-project
+Created:	24 minutes ago
+Labels:		app=spring-boot-hello-world
+Annotations:	openshift.io/generated-by=OpenShiftNewApp
+Latest Version:	1
+Selector:	app=spring-boot-hello-world,deploymentconfig=spring-boot-hello-world
+Replicas:	1
+Triggers:	Config, Image(spring-boot-hello-world@latest, auto=true)
+Strategy:	Rolling
+Template:
+  Labels:	app=spring-boot-hello-world
+		deploymentconfig=spring-boot-hello-world
+  Annotations:	openshift.io/generated-by=OpenShiftNewApp
+  Containers:
+   spring-boot-hello-world:
+    Image:			172.30.1.1:5000/my-project/spring-boot-hello-world@sha256:432a889459ff63aa1e0646590658a129e61b95b17143df4fcc67452e3723c9b2
+    Ports:			8443/TCP, 8778/TCP, 8080/TCP
+    Volume Mounts:		<none>
+    Environment Variables:	<none>
+  No volumes.
+
+Deployment #1 (latest):
+	Name:		spring-boot-hello-world-1
+	Created:	23 minutes ago
+	Status:		Complete
+	Replicas:	1 current / 1 desired
+	Selector:	app=spring-boot-hello-world,deployment=spring-boot-hello-world-1,deploymentconfig=spring-boot-hello-world
+	Labels:		app=spring-boot-hello-world,openshift.io/deployment-config.name=spring-boot-hello-world
+	Pods Status:	1 Running / 0 Waiting / 0 Succeeded / 0 Failed
+
+Events:
+  FirstSeen	LastSeen	Count	From				SubObjectPath	Type		Reason			Message
+  ---------	--------	-----	----				-------------	--------	------			-------
+  23m		23m		1	{deploymentconfig-controller }			Normal		DeploymentCreated	Created new replication controller "spring-boot-hello-world-1" for version 1
+```
+
+==> L'application a été déployée avec le replication controller "spring-boot-hello-world-1", donc 1 instance
+
+## Replication Controller
+
+```
+oc get replicationcontroller
+NAME                        DESIRED   CURRENT   READY     AGE
+spring-boot-hello-world-1   1         1         1         25m
+```
+
+```
+oc get replicationcontroller
+NAME                        DESIRED   CURRENT   READY     AGE
+spring-boot-hello-world-1   1         1         1         25m
+cyrille@cyrille-XPS-15-9560:~/Documents/openshift/minishift$ oc describe replicationcontroller spring-boot-hello-world-1
+Name:		spring-boot-hello-world-1
+Namespace:	my-project
+Image(s):	172.30.1.1:5000/my-project/spring-boot-hello-world@sha256:432a889459ff63aa1e0646590658a129e61b95b17143df4fcc67452e3723c9b2
+Selector:	app=spring-boot-hello-world,deployment=spring-boot-hello-world-1,deploymentconfig=spring-boot-hello-world
+Labels:		app=spring-boot-hello-world
+		openshift.io/deployment-config.name=spring-boot-hello-world
+Replicas:	1 current / 1 desired
+Pods Status:	1 Running / 0 Waiting / 0 Succeeded / 0 Failed
+No volumes.
+Events:
+  FirstSeen	LastSeen	Count	From				SubObjectPath	Type		Reason			Message
+  ---------	--------	-----	----				-------------	--------	------			-------
+  25m		25m		1	{replication-controller }			Normal		SuccessfulCreate	Created pod: spring-boot-hello-world-1-vwchj
+```
+
+==> Le pod "spring-boot-hello-world-1-vwchj" contient l'application déployée
+
+## Pods
+
+```
+$ oc get pods
+NAME                              READY     STATUS      RESTARTS   AGE
+spring-boot-hello-world-1-build   0/1       Completed   0          29m
+spring-boot-hello-world-1-vwchj   1/1       Running     0          28m
+```
+
+==> Le pod "spring-boot-hello-world-1-build" est actif lors du build (!!! à vérifier !!!)
+==> Le pod "spring-boot-hello-world-1-vwchj" est démarré, c'est l'application que nous venons de créer
+
+```
+$ oc describe pod spring-boot-hello-world-1-vwchj
+Name:			spring-boot-hello-world-1-vwchj
+Namespace:		my-project
+Security Policy:	restricted
+Node:			192.168.99.100/192.168.99.100
+Start Time:		Mon, 12 Jun 2017 10:57:51 +0200
+Labels:			app=spring-boot-hello-world
+			deployment=spring-boot-hello-world-1
+			deploymentconfig=spring-boot-hello-world
+Status:			Running
+IP:			172.17.0.2
+Controllers:		ReplicationController/spring-boot-hello-world-1
+Containers:
+  spring-boot-hello-world:
+    Container ID:	docker://b6b3c99c7a5e0f74b9539cbce713870cf76180346911cd2d4384bdedae6d8a30
+    Image:		172.30.1.1:5000/my-project/spring-boot-hello-world@sha256:432a889459ff63aa1e0646590658a129e61b95b17143df4fcc67452e3723c9b2
+    Image ID:		docker-pullable://172.30.1.1:5000/my-project/spring-boot-hello-world@sha256:432a889459ff63aa1e0646590658a129e61b95b17143df4fcc67452e3723c9b2
+    Ports:		8443/TCP, 8778/TCP, 8080/TCP
+    State:		Running
+      Started:		Mon, 12 Jun 2017 10:57:52 +0200
+    Ready:		True
+    Restart Count:	0
+    Volume Mounts:
+      /var/run/secrets/kubernetes.io/serviceaccount from default-token-nn1hd (ro)
+    Environment Variables:	<none>
+Conditions:
+  Type		Status
+  Initialized 	True 
+  Ready 	True 
+  PodScheduled 	True 
+Volumes:
+  default-token-nn1hd:
+    Type:	Secret (a volume populated by a Secret)
+    SecretName:	default-token-nn1hd
+QoS Class:	BestEffort
+Tolerations:	<none>
+Events:
+  FirstSeen	LastSeen	Count	From				SubObjectPath					Type		Reason		Message
+  ---------	--------	-----	----				-------------					--------	------		-------
+  30m		30m		1	{default-scheduler }								Normal		Scheduled	Successfully assigned spring-boot-hello-world-1-vwchj to 192.168.99.100
+  30m		30m		1	{kubelet 192.168.99.100}	spec.containers{spring-boot-hello-world}	Normal		Pulling		pulling image "172.30.1.1:5000/my-project/spring-boot-hello-world@sha256:432a889459ff63aa1e0646590658a129e61b95b17143df4fcc67452e3723c9b2"
+  30m		30m		1	{kubelet 192.168.99.100}	spec.containers{spring-boot-hello-world}	Normal		Pulled		Successfully pulled image "172.30.1.1:5000/my-project/spring-boot-hello-world@sha256:432a889459ff63aa1e0646590658a129e61b95b17143df4fcc67452e3723c9b2"
+  30m		30m		1	{kubelet 192.168.99.100}	spec.containers{spring-boot-hello-world}	Normal		Created		Created container with docker id b6b3c99c7a5e; Security:[seccomp=unconfined]
+  30m		30m		1	{kubelet 192.168.99.100}	spec.containers{spring-boot-hello-world}	Normal		Started		Started container with docker id b6b3c99c7a5e
+```
+
+
+-------------------------------------------------------------------------------------
+Créer une entrée dans le catalogue
+cf jdk1.8-mvn3.3.9.yaml
+Ajout du ficher via IHM openshift (OVERVIEW | Add to project | Import YAML / JSON)
+==> Une nouvelle entrée pour java est disponible
+
+--------------------------------------------------------------------------------------
+Surprise, après avoir ajouté l'affichage du host:port de la machine qui traite la requête, seule une seule ip apparait alors que j'ai mis 3 pods sur l'explorateur. Sticky session ?
+==> Avec le curl ça marche très bien manifestement
+
+curl http://spring-boot-hello-world-my-project.192.168.99.100.nip.io/

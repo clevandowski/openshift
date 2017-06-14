@@ -1,0 +1,444 @@
+# Vérification des habilitations
+
+```
+$ oc get users --as system:admin
+NAME        UID                                    FULL NAME   IDENTITIES
+developer   20962215-50e8-11e7-8900-a29f0e847837               anypassword:developer
+```
+
+```
+$ oc get clusterrolebindings --as system:admin
+NAME                                            ROLE                                       USERS           GROUPS                                         SERVICE ACCOUNTS                                   SUBJECTS
+basic-users                                     /basic-user                                                system:authenticated                                                                              
+cluster-admins                                  /cluster-admin                             system:admin    system:cluster-admins                          default/pvinstaller                                
+cluster-readers                                 /cluster-reader                                            system:cluster-readers                                                                            
+cluster-status-binding                          /cluster-status                                            system:authenticated, system:unauthenticated                                                      
+registry-registry-role                          /system:registry                                                                                          default/registry                                   
+router-router-role                              /system:router                                                                                            default/router                                     
+self-access-reviewers                           /self-access-reviewer                                      system:authenticated, system:unauthenticated                                                      
+self-provisioners                               /self-provisioner                                          system:authenticated:oauth                                                                        
+sudoer                                          /sudoer                                    developer                                                                                                         
+system:build-controller                         /system:build-controller                                                                                  openshift-infra/build-controller                   
+system:build-strategy-docker-binding            /system:build-strategy-docker                              system:authenticated                                                                              
+system:build-strategy-jenkinspipeline-binding   /system:build-strategy-jenkinspipeline                     system:authenticated                                                                              
+system:build-strategy-source-binding            /system:build-strategy-source                              system:authenticated                                                                              
+system:certificate-signing-controller           /system:certificate-signing-controller                                                                    openshift-infra/certificate-signing-controller     
+system:daemonset-controller                     /system:daemonset-controller                                                                              openshift-infra/daemonset-controller               
+system:deployment-controller                    /system:deployment-controller                                                                             openshift-infra/deployment-controller              
+system:deploymentconfig-controller              /system:deploymentconfig-controller                                                                       openshift-infra/deploymentconfig-controller        
+system:discovery-binding                        /system:discovery                                          system:authenticated, system:unauthenticated                                                      
+system:disruption-controller                    /system:disruption-controller                                                                             openshift-infra/disruption-controller              
+system:endpoint-controller                      /system:endpoint-controller                                                                               openshift-infra/endpoint-controller                
+system:gc-controller                            /system:gc-controller                                                                                     openshift-infra/gc-controller                      
+system:hpa-controller                           /system:hpa-controller                                                                                    openshift-infra/hpa-controller                     
+system:job-controller                           /system:job-controller                                                                                    openshift-infra/job-controller                     
+system:masters                                  /system:master                                             system:masters                                                                                    
+system:namespace-controller                     /system:namespace-controller                                                                              openshift-infra/namespace-controller               
+system:node-admins                              /system:node-admin                         system:master   system:node-admins                                                                                
+system:node-bootstrapper                        /system:node-bootstrapper                                                                                 openshift-infra/node-bootstrapper                  
+system:node-proxiers                            /system:node-proxier                                       system:nodes                                                                                      
+system:nodes                                    /system:node                                               system:nodes                                                                                      
+system:oauth-token-deleters                     /system:oauth-token-deleter                                system:authenticated, system:unauthenticated                                                      
+system:pv-attach-detach-controller              /system:pv-attach-detach-controller                                                                       openshift-infra/pv-attach-detach-controller        
+system:pv-binder-controller                     /system:pv-binder-controller                                                                              openshift-infra/pv-binder-controller               
+system:pv-provisioner-controller                /system:pv-provisioner-controller                                                                         openshift-infra/pv-provisioner-controller          
+system:pv-recycler-controller                   /system:pv-recycler-controller                                                                            openshift-infra/pv-recycler-controller             
+system:replicaset-controller                    /system:replicaset-controller                                                                             openshift-infra/replicaset-controller              
+system:replication-controller                   /system:replication-controller                                                                            openshift-infra/replication-controller             
+system:sdn-readers                              /system:sdn-reader                                         system:nodes                                                                                      
+system:service-ingress-ip-controller            /system:service-ingress-ip-controller                                                                     openshift-infra/service-ingress-ip-controller      
+system:service-load-balancer-controller         /system:service-load-balancer-controller                                                                  openshift-infra/service-load-balancer-controller   
+system:service-serving-cert-controller          /system:service-serving-cert-controller                                                                   openshift-infra/service-serving-cert-controller    
+system:statefulset-controller                   /system:statefulset-controller                                                                            openshift-infra/statefulset-controller             
+system:unidling-controller                      /system:unidling-controller                                                                               openshift-infra/unidling-controller                
+system:webhooks                                 /system:webhook                                            system:authenticated, system:unauthenticated                                                      
+```
+
+```
+$ oc whoami
+developer
+```
+
+```
+$ oc project
+Using project "myproject" from context named "minishift" on server "https://192.168.99.100:8443".
+```
+
+```
+$ oc get serviceaccount 
+NAME       SECRETS   AGE
+builder    2         7m
+default    2         7m
+deployer   2         7m
+```
+
+# Création d'un utilisateur "cyrille"
+
+```
+$ oc create user cyrille --as system:admin
+user "cyrille" created
+```
+
+
+# Création des environnements "development" et "integration"
+
+## Environnement "developpement"
+
+```
+$ oc new-project development
+Now using project "development" on server "https://192.168.99.100:8443".
+
+You can add applications to this project with the 'new-app' command. For example, try:
+
+    oc new-app centos/ruby-22-centos7~https://github.com/openshift/ruby-ex.git
+
+to build a new example application in Ruby.
+```
+
+```
+$ oc get rolebindings --namespace development
+NAME                    ROLE                    USERS       GROUPS                               SERVICE ACCOUNTS   SUBJECTS
+admin                   /admin                  developer                                                           
+system:deployers        /system:deployer                                                         deployer           
+system:image-builders   /system:image-builder                                                    builder            
+system:image-pullers    /system:image-puller                system:serviceaccounts:development
+```
+
+```
+$ oc policy add-role-to-user edit cyrille --namespace development
+role "edit" added: "cyrille"
+```
+
+```
+$ oc get rolebindings --namespace development
+NAME                    ROLE                    USERS       GROUPS                               SERVICE ACCOUNTS   SUBJECTS
+admin                   /admin                  developer                                                           
+edit                    /edit                   cyrille                                                             
+system:deployers        /system:deployer                                                         deployer           
+system:image-builders   /system:image-builder                                                    builder            
+system:image-pullers    /system:image-puller                system:serviceaccounts:development
+```
+
+```
+$ oc login -u cyrille
+Authentication required for https://192.168.99.100:8443 (openshift)
+Username: cyrille
+Password: 
+Login successful.
+
+You have one project on this server: "development"
+
+Using project "development".
+```
+
+## Environnement "integration"
+
+```
+$ oc new-project integration
+Now using project "integration" on server "https://192.168.99.100:8443".
+
+You can add applications to this project with the 'new-app' command. For example, try:
+
+    oc new-app centos/ruby-22-centos7~https://github.com/openshift/ruby-ex.git
+
+to build a new example application in Ruby.
+```
+
+```
+$ oc get rolebindings --namespace integration
+NAME                    ROLE                    USERS       GROUPS                               SERVICE ACCOUNTS   SUBJECTS
+admin                   /admin                  developer                                                           
+system:deployers        /system:deployer                                                         deployer           
+system:image-builders   /system:image-builder                                                    builder            
+system:image-pullers    /system:image-puller                system:serviceaccounts:integration
+```
+
+```
+$ oc policy add-role-to-user edit cyrille --namespace integration
+role "edit" added: "cyrille"
+```
+
+```
+$ oc get rolebindings --namespace integration
+NAME                    ROLE                    USERS       GROUPS                               SERVICE ACCOUNTS   SUBJECTS
+admin                   /admin                  developer                                                           
+edit                    /edit                   cyrille                                                             
+system:deployers        /system:deployer                                                         deployer           
+system:image-builders   /system:image-builder                                                    builder            
+system:image-pullers    /system:image-puller                system:serviceaccounts:integration
+```
+
+```
+$ oc login -u cyrille
+Logged into "https://192.168.99.100:8443" as "cyrille" using existing credentials.
+
+You have access to the following projects and can switch between them with 'oc project <projectname>':
+
+    development
+  * integration
+
+Using project "integration".
+```
+
+Note: A partir de là, toutes les actions seront effectuées par le user "cyrille" par défaut
+
+# Création et exposition de l'application "spring-boot-hello-world"
+
+```
+$ oc new-app registry.access.redhat.com/redhat-openjdk-18/openjdk18-openshift~https://github.com/clevandowski/spring-boot-hello-world.git --namespace development
+```
+
+```
+$ oc expose services spring-boot-hello-world
+route "spring-boot-hello-world" exposed
+```
+
+Note: Attendre la fin du build et du déploiement
+			Observer dans l'explorateur que tout se passe bien sur http://spring-boot-hello-world-development.192.168.99.100.nip.io/
+
+
+Pour info
+```
+$ oc describe bc spring-boot-hello-world
+Name:		spring-boot-hello-world
+Namespace:	development
+Created:	About a minute ago
+Labels:		app=spring-boot-hello-world
+Annotations:	openshift.io/generated-by=OpenShiftNewApp
+Latest Version:	1
+
+Strategy:	Source
+URL:		https://github.com/clevandowski/spring-boot-hello-world.git
+From Image:	ImageStreamTag openjdk18-openshift:latest
+Output to:	ImageStreamTag spring-boot-hello-world:latest
+
+Build Run Policy:	Serial
+Triggered by:		Config, ImageChange
+Webhook GitHub:
+	URL:	https://192.168.99.100:8443/oapi/v1/namespaces/development/buildconfigs/spring-boot-hello-world/webhooks/T-nplB-MU8dYLF7Oxv3C/github
+Webhook Generic:
+	URL:		https://192.168.99.100:8443/oapi/v1/namespaces/development/buildconfigs/spring-boot-hello-world/webhooks/joCUlX06mOCWT2_Z3uOd/generic
+	AllowEnv:	false
+
+Build				Status		Duration		Creation Time
+spring-boot-hello-world-1 	running 	running for 56s 	2017-06-14 13:49:02 +0200 CEST
+
+Events:
+  FirstSeen	LastSeen	Count	From				SubObjectPath	Type		Reason				Message
+  ---------	--------	-----	----				-------------	--------	------				-------
+  1m		1m		15	{build-config-controller }			Warning		BuildConfigInstantiateFailed	error instantiating Build from BuildConfig development/spring-boot-hello-world: Error resolving ImageStreamTag openjdk18-openshift:latest in namespace development: unable to find latest tagged image
+```
+
+# Installer Jenkins dans l'environnement "development"
+
+Note: A priori, il faut avoir le rôle "admin" de l'environnement (project) pour avoir le droit de monter un jenkins
+			Sinon "Cannot create role binding "jenkins_edit". User "cyrille" cannot create rolebindings in project "development"."
+
+
+
+Note: Si on n'installe pas Jenkins, Openshift le fera si on ajoute un pipeline
+
+Les actions suivantes se font via l'IHM d'Openshift (https://192.168.99.100:8443/console/)
+
+* Se connecter sur l'IHM avec le user "developer"
+* Project development > Overview > Add to project > Technologies: Continuous Integration & Deployment > Jenkins (Persistant) > Select
+* Laisser les paramètres par défaut > Create
+
+==> Jenkins se met en place, on y accède via https://jenkins-development.192.168.99.100.nip.io/
+
+## Nouveaux rôles et droits créés par l'installation de Jenkins
+
+Note: Utiliser le user "developer" pour les commandes suivantes
+```
+$ oc login -u developer
+$ oc project development
+```
+
+```
+$ oc get serviceaccount
+NAME       SECRETS   AGE
+builder    2         2h
+default    2         2h
+deployer   2         2h
+jenkins    2         15m
+```
+==> Nouveau serviceaccount "jenkins" pour le namespace "development"
+==> Dans l'absolu (=hors du namespace "development"), ce serviceaccount s'appelle "system:serviceaccount:development:jenkins"
+
+```
+$ oc get rolebindings
+NAME                    ROLE                    USERS       GROUPS                               SERVICE ACCOUNTS   SUBJECTS
+admin                   /admin                  developer                                                           
+edit                    /edit                   cyrille                                                             
+jenkins_edit            /edit                                                                    jenkins            
+system:deployers        /system:deployer                                                         deployer           
+system:image-builders   /system:image-builder                                                    builder            
+system:image-pullers    /system:image-puller                system:serviceaccounts:development
+```
+==> Nouveau rolebinding "jenkins_edit" (rôle edit) affecté au serviceaccount "jenkins" pour le namespace "development"
+
+# Ajout des rôles & habilitations pour le pipeline
+
+Note: se connecter avec le user "developer"
+
+```
+$ oc login -u developer
+```
+
+## Permettre au serviceaccount "jenkins" du namespace "development" de pouvoir manipuler des object API sur le namespace "integration"
+
+```
+$ oc policy add-role-to-user \
+    edit system:serviceaccount:development:jenkins \
+    --namespace=integration
+```
+
+## Permettre au serviceaccount "default" du namespace "integration" de pouvoir "puller" des images issues du namespace "development" 
+
+```
+$ oc policy add-role-to-user \@
+    system:image-puller system:serviceaccount:integration:default \
+    --namespace=development
+```
+
+
+```
+$ oc login -u cyrille
+```
+
+
+# Création du pipeline
+
+Contexte: Dans l'IHM, user "cyrille", project "development"
+
+* Overview > Add to project > Import YAML / JSON
+
+Injecter le fichier "spring-boot-hello-world-pipeline.yaml"
+
+@TODO: Comment gérer le versionning de ce fichier ? Directement dans le projet GIT de spring-boot-hello-world ?
+
+Contenu de spring-boot-hello-world-pipeline.yaml:
+```
+kind: BuildConfig
+apiVersion: v1
+metadata:
+  name: spring-boot-hello-world-pipeline
+  labels:
+    name: spring-boot-hello-world-pipeline
+spec:
+  strategy:
+    type: JenkinsPipeline
+    jenkinsPipelineStrategy:
+      jenkinsfile: |-
+        node('maven') {
+          stage('build') {
+            openshiftBuild(buildConfig: 'spring-boot-hello-world', showBuildLogs: 'true')
+          }
+          stage('deploy-development') {
+            openshiftDeploy(deploymentConfig: 'spring-boot-hello-world')
+          }
+          stage('validation') {
+            input message: 'Valider ?', ok: 'Oui'
+          }
+          stage('deploy-integration') {
+            openshiftDeploy(deploymentConfig: 'spring-boot-hello-world', namespace: 'integration')
+          }
+        }
+```
+
+# Exécution du pipeline
+
+Contexte: Dans l'IHM, user "cyrille", project "development"
+
+* Builds > Pipeline > spring-boot-hello-world-pipeline > Start Pipeline
+
+Note: au 1er build, Jenkins download l'image pour le node "Maven", ça prend qques minutes selon la connexion
+
+## Voir l'avancement du build dans Jenkins
+
+* https://jenkins-development.192.168.99.100.nip.io/job/development-spring-boot-hello-world-pipeline/
+* Connexion avec le user "cyrille"
+* Cliquer sur le build en cours (en principe le #1), puis sur "Console Output"
+
+
+==> Le pipeline ne démarre pas. Jenkins n'arrive pas établir la connexion à l'agent.
+
+==> Le container slave est créé mais ce dernier n'arrive pas à se connecter
+
+Logs du pod maven-xxxxxx (slave jenkins en cours démarrage)
+
+```
+Using 64 bit Java since OPENSHIFT_JENKINS_JVM_ARCH is not set
+Downloading http://172.30.21.245:80/jnlpJars/remoting.jar ...
+```
+
+==> Arrêt manuel du pipeline via l'IHM openshift
+		Note: L'arrêt du pipeline ne sort pas le job lancé de la file d'attente
+					Il ne supprime pas non plus les agents qui ont été créés (plusieurs à cause des timeouts)
+					Jenkins arrive à supprimer tt seul les agents orphelins au bout d'un moment une fois le job sorti de la file d'attente
+
+==> Je tente de recréer le pipeline, donc je supprime d'abord l'existant
+
+```
+$ oc delete bc spring-boot-hello-world-pipeline
+buildconfig "spring-boot-hello-world-pipeline" deleted
+```
+
+Note: le job correspondant à ce pipeline est supprimé automatiquement dans Jenkins
+
+# Supprimer Jenkins
+
+* Se connecter en developer
+$ oc login -u developer
+
+* Supprimer les deployments et deploymentconfig
+$ oc delete deploymentconfig jenkins
+Note: Supprimer le deploymentconfig supprime les pods
+
+* Supprimer les services
+$ oc delete service jenkins
+$ oc delete service jenkins-jnlp
+
+* Supprimer les routes
+$ oc delete route jenkins
+
+* Supprimer le pipeline
+$ oc delete bc spring-boot-hello-world-pipeline
+
+* Supprimer le storage
+$ oc delete pvc jenkins
+
+* Supprimer le accountservice
+$ oc delete serviceaccount jenkins
+Note: Supprimer le serviceaccount supprime les secrets
+
+* Supprimer le rolebinding jenkins_edit
+$ oc delete rolebinding jenkins_edit
+
+* Supprimer le role edit du serviceaccount development/jenkins sur l'environnement integration
+$ oc policy remove-role-from-user edit system:serviceaccount:development:jenkins --namespace integration
+
+
+==> Le pipeline fonctionne s'il est créé avec le user "developer"
+
+==> Arrivé à l'étape "deploy-integration",
+
+com.openshift.restclient.NotFoundException: deploymentconfigs "spring-boot-hello-world" not found
+
+==> Le deploymentconfig n'a pas été créé automatiquement
+
+Si on crée manuellement le deploymentconfig ça fonctionne (export from development, import to integration)
+
+==> Le service n'a pas été créé automatiquement
+
+Si on crée manuellement le deploymentconfig ça fonctionne (export from development, import to integration)
+
+==> La route vers le service n'a pas été créée automatiquement
+
+On ne peut pas réutiliser celle déjà créée dans le project development, pb de conflit
+Il faut donc créer la route avec 
+$ oc expose service spring-boot-hello-world --namespace integration
+
+
+TODO:
+* Création automatique du deploymentconfig, du service et de la route lorsque ces ressources n'existent pas sur l'environnement cible (type integration)

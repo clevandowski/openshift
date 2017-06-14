@@ -1,0 +1,352 @@
+# Création d'un BuildConfig pour le projet spring-boot-hello-world
+
+$ oc export buildconfig spring-boot-hello-world --namespace development
+apiVersion: v1
+kind: BuildConfig
+metadata:
+  annotations:
+    openshift.io/generated-by: OpenShiftNewApp
+  creationTimestamp: null
+  labels:
+    app: spring-boot-hello-world
+  name: spring-boot-hello-world
+spec:
+  nodeSelector: null
+  output:
+    to:
+      kind: ImageStreamTag
+      name: spring-boot-hello-world:latest
+  postCommit: {}
+  resources: {}
+  runPolicy: Serial
+  source:
+    git:
+      uri: https://github.com/clevandowski/spring-boot-hello-world.git
+    type: Git
+  strategy:
+    sourceStrategy:
+      from:
+        kind: ImageStreamTag
+        name: openjdk18-openshift:latest
+    type: Source
+  triggers:
+  - github:
+      secret: qwF1zyANREoB-ZYfM48J
+    type: GitHub
+  - generic:
+      secret: DpqYwkBomppVwNyrLYNL
+    type: Generic
+  - type: ConfigChange
+  - imageChange: {}
+    type: ImageChange
+status:
+  lastVersion: 0
+
+
+# Création d'un BuildConfig dans Openshift
+
+* Prérequis
+** Le "BuildConfig" "spring-boot-hello-world" doit exister préalablement sur l'environnement "development"
+** Le "DeploymentConfig "spring-boot-hello-world" doit exister préalablement sur l'environnement "development"
+
+Fichier "spring-boot-hello-world-pipeline.yaml"
+
+```
+kind: BuildConfig
+apiVersion: v1
+metadata:
+  name: spring-boot-hello-world-pipeline
+  labels:
+    name: spring-boot-hello-world-pipeline
+spec:
+  triggers:
+  - type: GitHub
+    github:
+      secret: qwF1zyANREoB-ZYfM48J
+  - type: Generic
+    generic:
+      secret: DpqYwkBomppVwNyrLYNL
+  strategy:
+    type: JenkinsPipeline
+    jenkinsPipelineStrategy:
+      jenkinsfile: |-
+        node('maven') {
+          stage 'build'
+          openshiftBuild(buildConfig: 'spring-boot-hello-world', showBuildLogs: 'true')
+          stage 'deploy'
+          openshiftDeploy(deploymentConfig: 'spring-boot-hello-world')
+      }
+```
+
+* Note: Intégration par l'IHM pour l'instant
+* Note: Attention, la partie "strategy" était mal indentée, import impossible
+
+* Note: Pas de trigger qui se déclenche sur un changement de code dans Github
+
+* Note: Jenkins s'est installé automatiquement dès que j'ai lancé manuellement le pipeline via openshift
+
+* Note: Le "node('maven')" dans jenkins s'est instancié tout seul, mais je n'ai pas accès à la configuration interne de jenkins avec le user "cyrille" (role Edit)
+
+* Note: Je n'arrive pas à me connecter en user "system" sur jenkins
+ERROR: &quot;system&quot; is prohibited as a full name for security reasons.
+	at hudson.util.FormValidation._errorWithMarkup(FormValidation.java:266)
+	at hudson.util.FormValidation.errorWithMarkup(FormValidation.java:252)
+	at hudson.util.FormValidation.error(FormValidation.java:143)
+	at hudson.model.User.save(User.java:744)
+	at hudson.model.User.addProperty(User.java:284)
+	at org.openshift.jenkins.plugins.openshiftlogin.OpenShiftUserInfo.updateProfile(OpenShiftUserInfo.java:78)
+	at org.openshift.jenkins.plugins.openshiftlogin.OpenShiftOAuth2SecurityRealm.updateAuthorizationStrategy(OpenShiftOAuth2SecurityRealm.java:645)
+	at org.openshift.jenkins.plugins.openshiftlogin.OpenShiftOAuth2SecurityRealm$6.onSuccess(OpenShiftOAuth2SecurityRealm.java:601)
+	at org.openshift.jenkins.plugins.openshiftlogin.OAuthSession.doFinishLogin(OAuthSession.java:114)
+	at org.openshift.jenkins.plugins.openshiftlogin.OpenShiftOAuth2SecurityRealm.doFinishLogin(OpenShiftOAuth2SecurityRealm.java:808)
+	at java.lang.invoke.MethodHandle.invokeWithArguments(MethodHandle.java:627)
+	at org.kohsuke.stapler.Function$MethodFunction.invoke(Function.java:343)
+	at org.kohsuke.stapler.Function.bindAndInvoke(Function.java:184)
+	at org.kohsuke.stapler.Function.bindAndInvokeAndServeResponse(Function.java:117)
+	at org.kohsuke.stapler.MetaClass$1.doDispatch(MetaClass.java:129)
+	at org.kohsuke.stapler.NameBasedDispatcher.dispatch(NameBasedDispatcher.java:58)
+	at org.kohsuke.stapler.Stapler.tryInvoke(Stapler.java:715)
+	at org.kohsuke.stapler.Stapler.invoke(Stapler.java:845)
+	at org.kohsuke.stapler.MetaClass$3.doDispatch(MetaClass.java:209)
+	at org.kohsuke.stapler.NameBasedDispatcher.dispatch(NameBasedDispatcher.java:58)
+	at org.kohsuke.stapler.Stapler.tryInvoke(Stapler.java:715)
+	at org.kohsuke.stapler.Stapler.invoke(Stapler.java:845)
+	at org.kohsuke.stapler.Stapler.invoke(Stapler.java:649)
+	at org.kohsuke.stapler.Stapler.service(Stapler.java:238)
+	at javax.servlet.http.HttpServlet.service(HttpServlet.java:790)
+	at org.eclipse.jetty.servlet.ServletHolder.handle(ServletHolder.java:812)
+	at org.eclipse.jetty.servlet.ServletHandler$CachedChain.doFilter(ServletHandler.java:1669)
+	at hudson.util.PluginServletFilter$1.doFilter(PluginServletFilter.java:135)
+	at org.openshift.jenkins.plugins.openshiftlogin.OpenShiftPermissionFilter.doFilter(OpenShiftPermissionFilter.java:185)
+	at hudson.util.PluginServletFilter$1.doFilter(PluginServletFilter.java:132)
+	at org.openshift.jenkins.plugins.openshiftlogin.OpenShiftPermissionFilter.doFilter(OpenShiftPermissionFilter.java:185)
+	at hudson.util.PluginServletFilter$1.doFilter(PluginServletFilter.java:132)
+	at org.jenkinsci.plugins.ssegateway.Endpoint$SSEListenChannelFilter.doFilter(Endpoint.java:225)
+	at hudson.util.PluginServletFilter$1.doFilter(PluginServletFilter.java:132)
+	at com.cloudbees.jenkins.support.slowrequest.SlowRequestFilter.doFilter(SlowRequestFilter.java:38)
+	at hudson.util.PluginServletFilter$1.doFilter(PluginServletFilter.java:132)
+	at io.jenkins.blueocean.ResourceCacheControl.doFilter(ResourceCacheControl.java:134)
+	at hudson.util.PluginServletFilter$1.doFilter(PluginServletFilter.java:132)
+	at jenkins.metrics.impl.MetricsFilter.doFilter(MetricsFilter.java:125)
+	at hudson.util.PluginServletFilter$1.doFilter(PluginServletFilter.java:132)
+	at hudson.util.PluginServletFilter.doFilter(PluginServletFilter.java:126)
+	at org.eclipse.jetty.servlet.ServletHandler$CachedChain.doFilter(ServletHandler.java:1652)
+	at hudson.security.csrf.CrumbFilter.doFilter(CrumbFilter.java:49)
+	at org.eclipse.jetty.servlet.ServletHandler$CachedChain.doFilter(ServletHandler.java:1652)
+	at hudson.security.ChainedServletFilter$1.doFilter(ChainedServletFilter.java:84)
+	at hudson.security.UnwrapSecurityExceptionFilter.doFilter(UnwrapSecurityExceptionFilter.java:51)
+	at hudson.security.ChainedServletFilter$1.doFilter(ChainedServletFilter.java:87)
+	at jenkins.security.ExceptionTranslationFilter.doFilter(ExceptionTranslationFilter.java:117)
+	at hudson.security.ChainedServletFilter$1.doFilter(ChainedServletFilter.java:87)
+	at org.acegisecurity.providers.anonymous.AnonymousProcessingFilter.doFilter(AnonymousProcessingFilter.java:125)
+	at hudson.security.ChainedServletFilter$1.doFilter(ChainedServletFilter.java:87)
+	at org.acegisecurity.ui.rememberme.RememberMeProcessingFilter.doFilter(RememberMeProcessingFilter.java:135)
+	at hudson.security.ChainedServletFilter$1.doFilter(ChainedServletFilter.java:87)
+	at org.acegisecurity.ui.AbstractProcessingFilter.doFilter(AbstractProcessingFilter.java:271)
+	at hudson.security.ChainedServletFilter$1.doFilter(ChainedServletFilter.java:87)
+	at jenkins.security.BasicHeaderProcessor.doFilter(BasicHeaderProcessor.java:93)
+	at hudson.security.ChainedServletFilter$1.doFilter(ChainedServletFilter.java:87)
+	at org.acegisecurity.context.HttpSessionContextIntegrationFilter.doFilter(HttpSessionContextIntegrationFilter.java:249)
+	at hudson.security.HttpSessionContextIntegrationFilter2.doFilter(HttpSessionContextIntegrationFilter2.java:67)
+	at hudson.security.ChainedServletFilter$1.doFilter(ChainedServletFilter.java:87)
+	at hudson.security.ChainedServletFilter.doFilter(ChainedServletFilter.java:76)
+	at hudson.security.HudsonFilter.doFilter(HudsonFilter.java:171)
+	at org.eclipse.jetty.servlet.ServletHandler$CachedChain.doFilter(ServletHandler.java:1652)
+	at org.kohsuke.stapler.compression.CompressionFilter.doFilter(CompressionFilter.java:49)
+	at org.eclipse.jetty.servlet.ServletHandler$CachedChain.doFilter(ServletHandler.java:1652)
+	at hudson.util.CharacterEncodingFilter.doFilter(CharacterEncodingFilter.java:82)
+	at org.eclipse.jetty.servlet.ServletHandler$CachedChain.doFilter(ServletHandler.java:1652)
+	at org.kohsuke.stapler.DiagnosticThreadNameFilter.doFilter(DiagnosticThreadNameFilter.java:30)
+	at org.eclipse.jetty.servlet.ServletHandler$CachedChain.doFilter(ServletHandler.java:1652)
+	at org.eclipse.jetty.servlet.ServletHandler.doHandle(ServletHandler.java:585)
+	at org.eclipse.jetty.server.handler.ScopedHandler.handle(ScopedHandler.java:143)
+	at org.eclipse.jetty.security.SecurityHandler.handle(SecurityHandler.java:553)
+	at org.eclipse.jetty.server.session.SessionHandler.doHandle(SessionHandler.java:223)
+	at org.eclipse.jetty.server.handler.ContextHandler.doHandle(ContextHandler.java:1127)
+	at org.eclipse.jetty.servlet.ServletHandler.doScope(ServletHandler.java:515)
+	at org.eclipse.jetty.server.session.SessionHandler.doScope(SessionHandler.java:185)
+	at org.eclipse.jetty.server.handler.ContextHandler.doScope(ContextHandler.java:1061)
+	at org.eclipse.jetty.server.handler.ScopedHandler.handle(ScopedHandler.java:141)
+	at org.eclipse.jetty.server.handler.HandlerWrapper.handle(HandlerWrapper.java:97)
+	at org.eclipse.jetty.server.Server.handle(Server.java:499)
+	at org.eclipse.jetty.server.HttpChannel.handle(HttpChannel.java:311)
+	at org.eclipse.jetty.server.HttpConnection.onFillable(HttpConnection.java:257)
+	at org.eclipse.jetty.io.AbstractConnection$2.run(AbstractConnection.java:544)
+	at winstone.BoundedExecutorService$1.run(BoundedExecutorService.java:77)
+	at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1142)
+	at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:617)
+	at java.lang.Thread.run(Thread.java:748)
+
+
+==> Donner le role "cluster-admin" au user system ?
+oc login -u developer
+oc policy add-role-to-user cluster-admin system --as system:admin
+
+==> Nein !!!!
+
+En fait l'utilisateur "system:admin" permet d'avoir un vrai rôle d'admin en CLI mais pas en IHM
+
+* L'utilisateur "developer" peut administrer l'IHM jenkins
+
+# Donner la possibilité au "project" (environnement) integration de récupérer les images du project development
+
+oc login -u developer
+
+oc policy add-role-to-user \
+    system:image-puller system:serviceaccount:integration:default \
+    --namespace=development
+
+oc policy remove-role-from-user \
+    system:image-puller system:serviceaccount:integration:default \
+    --namespace=development
+
+
+# Deploiement sur un environnement different : integration
+
+```
+kind: BuildConfig
+apiVersion: v1
+metadata:
+  name: spring-boot-hello-world-pipeline
+  labels:
+    name: spring-boot-hello-world-pipeline
+spec:
+  triggers:
+  - type: GitHub
+    github:
+      secret: qwF1zyANREoB-ZYfM48J
+  - type: Generic
+    generic:
+      secret: DpqYwkBomppVwNyrLYNL
+  strategy:
+    type: JenkinsPipeline
+    jenkinsPipelineStrategy:
+      jenkinsfile: |-
+        node('maven') {
+          stage('build') {
+            openshiftBuild(buildConfig: 'spring-boot-hello-world', showBuildLogs: 'true')
+          }
+          stage('deploy-development') {
+          	openshiftDeploy(deploymentConfig: 'spring-boot-hello-world')
+          }
+          stage('validation') {
+            input message: 'Valider ?', ok: 'Oui'
+          }
+          stage('deploy-integration') {
+            openshiftDeploy(deploymentConfig: 'spring-boot-hello-world', namespace: 'integration')
+          }
+        }
+```
+
+==> Plantage au stage 'deploy-integration'
+com.openshift.restclient.authorization.ResourceForbiddenException: User "system:serviceaccount:development:jenkins" cannot get deploymentconfigs in project "integration" User "system:serviceaccount:development:jenkins" cannot get deploymentconfigs in project "integration"
+	at com.openshift.internal.restclient.okhttp.ResponseCodeInterceptor.createOpenShiftException(ResponseCodeInterceptor.java:106)
+	at com.openshift.internal.restclient.okhttp.ResponseCodeInterceptor.intercept(ResponseCodeInterceptor.java:65)
+	at okhttp3.internal.http.RealInterceptorChain.proceed(RealInterceptorChain.java:92)
+	at okhttp3.internal.http.RealInterceptorChain.proceed(RealInterceptorChain.java:67)
+	at okhttp3.RealCall.getResponseWithInterceptorChain(RealCall.java:170)
+	at okhttp3.RealCall.execute(RealCall.java:60)
+	at com.openshift.internal.restclient.DefaultClient.execute(DefaultClient.java:255)
+	at com.openshift.internal.restclient.DefaultClient.execute(DefaultClient.java:219)
+	at com.openshift.internal.restclient.DefaultClient.execute(DefaultClient.java:207)
+	at com.openshift.internal.restclient.DefaultClient.get(DefaultClient.java:330)
+	at com.openshift.jenkins.plugins.pipeline.model.RetryIClient.lambda$get$5(RetryIClient.java:174)
+	at com.openshift.jenkins.plugins.pipeline.model.RetryIClient.retry(RetryIClient.java:72)
+	at com.openshift.jenkins.plugins.pipeline.model.RetryIClient.get(RetryIClient.java:174)
+	at com.openshift.jenkins.plugins.pipeline.model.IOpenShiftDeployer.coreLogic(IOpenShiftDeployer.java:54)
+	at com.openshift.jenkins.plugins.pipeline.model.IOpenShiftPlugin.doItCore(IOpenShiftPlugin.java:308)
+	at com.openshift.jenkins.plugins.pipeline.dsl.OpenShiftDeployerExecution.run(OpenShiftDeployerExecution.java:42)
+	at com.openshift.jenkins.plugins.pipeline.dsl.OpenShiftDeployerExecution.run(OpenShiftDeployerExecution.java:18)
+	at org.jenkinsci.plugins.workflow.steps.AbstractSynchronousNonBlockingStepExecution$1$1.call(AbstractSynchronousNonBlockingStepExecution.java:47)
+	at hudson.security.ACL.impersonate(ACL.java:260)
+	at org.jenkinsci.plugins.workflow.steps.AbstractSynchronousNonBlockingStepExecution$1.run(AbstractSynchronousNonBlockingStepExecution.java:44)
+	at java.util.concurrent.Executors$RunnableAdapter.call(Executors.java:511)
+	at java.util.concurrent.FutureTask.run(FutureTask.java:266)
+	at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1142)
+	at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:617)
+	at java.lang.Thread.run(Thread.java:748)
+
+==> Normal, je n'ai pas donné de droit au serviceaccount jenkins
+```
+$ oc policy add-role-to-user \
+    system:image-puller system:serviceaccount:development:jenkins \
+    --namespace=integration
+```
+
+==> Marche pas, toujours la même erreur ==> retour arrière
+```
+$ oc policy remove-role-from-user \
+    system:image-puller system:serviceaccount:development:jenkins \
+    --namespace=integration
+```
+
+
+$ oc policy add-role-to-user \
+    system:deployer system:serviceaccount:development:jenkins \
+    --namespace=integration
+
+==> Marche pas
+
+$ oc policy remove-role-from-user \
+    system:deployer system:serviceaccount:development:jenkins \
+    --namespace=integration
+
+==> https://github.com/openshift/origin/issues/10257
+
+$ oc policy add-role-to-user \
+    edit system:serviceaccount:development:jenkins \
+    --namespace=integration
+
+==> Marche pas mais le pb est après, le role "edit" est donc qd mm nécessaire pour que jenkins deploie
+
+$ oc policy add-role-to-user \
+    system:image-puller system:serviceaccount:development:jenkins \
+    --namespace=integration
+
+==> Marche pas
+
+
+
+$ oc get rolebindings --namespace development
+NAME                    ROLE                    USERS               GROUPS                               SERVICE ACCOUNTS   SUBJECTS
+admin                   /admin                  system, developer                                        system             
+cluster-admin           /cluster-admin          system                                                                      
+edit                    /edit                   cyrille                                                                     
+jenkins_edit            /edit                                                                            jenkins            
+system:deployers        /system:deployer                                                                 deployer           
+system:image-builders   /system:image-builder                                                            builder            
+system:image-pullers    /system:image-puller                        system:serviceaccounts:development                      
+
+
+$ oc get rolebindings --namespace integration
+NAME                    ROLE                    USERS               GROUPS                               SERVICE ACCOUNTS                SUBJECTS
+admin                   /admin                  system, developer                                        development/jenkins             
+edit                    /edit                   cyrille                                                  development/jenkins             
+system:deployers        /system:deployer                                                                 deployer, development/jenkins   
+system:image-builders   /system:image-builder                                                            builder                         
+system:image-pullers    /system:image-puller                        system:serviceaccounts:integration   development/jenkins
+
+
+$ oc get serviceaccount --namespace development
+NAME       SECRETS   AGE
+builder    2         1d
+default    2         1d
+deployer   2         1d
+jenkins    2         1d
+
+$ oc get serviceaccount --namespace integration
+NAME       SECRETS   AGE
+builder    2         1d
+default    2         1d
+deployer   2         1d
+
+
+# Permettre à l'environnement integration de récupérer des images de l'environnement developpement
+
+oc policy add-role-to-user \
+    system:image-puller system:serviceaccount:integration:default \
+    --namespace=development
+
+===> YEEEEEEEEEEEEEEEEEEEEESSSS
+
+
