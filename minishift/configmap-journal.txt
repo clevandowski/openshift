@@ -1,0 +1,449 @@
+# Erreur démarrage POD
+Starting the Java application using /opt/run-java/run-java.sh ...
+exec java -javaagent:/opt/jolokia/jolokia.jar=config=/opt/jolokia/etc/jolokia.properties -XX:+UseParallelGC -XX:MinHeapFreeRatio=20 -XX:MaxHeapFreeRatio=40 -XX:GCTimeRatio=4 -XX:AdaptiveSizePolicyWeight=90 -XX:MaxMetaspaceSize=100m -cp . -jar /deployments/spring-boot-hello-world-0.0.2-SNAPSHOT.jar
+Picked up JAVA_TOOL_OPTIONS: -Duser.home=/home/jboss -Duser.name=jboss
+I> No access restrictor found, access to any MBean is allowed
+Jolokia: Agent started with URL https://172.17.0.10:8778/jolokia/
+no main manifest attribute, in /deployments/spring-boot-hello-world-0.0.2-SNAPSHOT.jar
+==> La dernière ligne indique un pb dans le jar généré
+==> Ce pb n'existe pas avec spring-boot-hello-world-0.0.1-SNAPSHOT.jar
+
+# Ligne de commande lancée par le build
+mvn -Dmaven.repo.local=/tmp/artifacts/m2 -s /tmp/artifacts/configuration/settings.xml -e -Popenshift -DskipTests -Dcom.redhat.xpaas.repo.redhatga -Dfabric8.skip=true package -Djava.net.preferIPv4Stack=true
+
+==> Le fichier /tmp/artifacts/configuration/settings.xml est dumpé dans "settings-openjdk18-openshift.xml"
+
+# Démarrage du container en erreur pour analyse
+$ minishift ssh
+docker@minishift:~$ docker run -it --rm 172.30.1.1:5000/development/spring-boot-hello-world:latest /bin/bash
+
+[jboss@9c611febf67b ~]$ cd /deployments/
+
+# On va voir ce que contient le fichier META-INF/MANIFEST.MF
+[jboss@9c611febf67b deployments]$ unzip spring-boot-hello-world-0.0.2-SNAPSHOT.jar
+Archive:  spring-boot-hello-world-0.0.2-SNAPSHOT.jar
+   creating: META-INF/
+  inflating: META-INF/MANIFEST.MF    
+   creating: com/
+   creating: com/zenika/
+   creating: com/zenika/formation/
+   creating: com/zenika/formation/javadevops/
+  inflating: com/zenika/formation/javadevops/DemoConfig.class  
+  inflating: com/zenika/formation/javadevops/DemoApplication.class  
+  inflating: com/zenika/formation/javadevops/DemoController.class  
+  inflating: META-INF/spring-configuration-metadata.json  
+  inflating: application.properties  
+   creating: META-INF/maven/
+   creating: META-INF/maven/com.zenika.formation.javadevops/
+   creating: META-INF/maven/com.zenika.formation.javadevops/spring-boot-hello-world/
+  inflating: META-INF/maven/com.zenika.formation.javadevops/spring-boot-hello-world/pom.xml  
+  inflating: META-INF/maven/com.zenika.formation.javadevops/spring-boot-hello-world/pom.properties  
+[jboss@9c611febf67b deployments]$ cat META-INF/MANIFEST.MF
+Manifest-Version: 1.0
+Archiver-Version: Plexus Archiver
+Built-By: jboss
+Created-By: Apache Maven 3.3.9
+Build-Jdk: 1.8.0_131
+[jboss@9c611febf67b deployments]$ exit
+
+
+docker@minishift:~$ docker images
+REPOSITORY                                                         TAG                 IMAGE ID            CREATED             SIZE
+172.30.1.1:5000/development/spring-boot-hello-world                latest              d8685d8b93f1        50 minutes ago      464 MB
+172.30.1.1:5000/development/spring-boot-hello-world                <none>              4c681c312f92        10 hours ago        496.2 MB
+172.30.1.1:5000/development/spring-boot-hello-world                <none>              9e4268d9ed49        10 hours ago        464 MB
+172.30.1.1:5000/development/spring-boot-hello-world                <none>              ca3b0f18af0e        10 hours ago        496.2 MB
+172.30.1.1:5000/development/spring-boot-hello-world                <none>              3d7a5949c4de        11 hours ago        496.2 MB
+172.30.1.1:5000/development/spring-boot-hello-world                <none>              a1e19d8e9f10        11 hours ago        496.2 MB
+172.30.1.1:5000/development/spring-boot-hello-world                <none>              0428f4cba88d        12 hours ago        464 MB
+172.30.1.1:5000/development/spring-boot-hello-world                <none>              4e9707442615        24 hours ago        496.2 MB
+172.30.1.1:5000/development/spring-boot-hello-world                <none>              2c9762481ff4        24 hours ago        496.2 MB
+172.30.1.1:5000/development/spring-boot-hello-world                <none>              ad9ecaa2b445        24 hours ago        496.2 MB
+
+==> Je teste l'image juste avant la latest, qui doit en principe contenir une spring-boot-hello-world-0.0.1-SNAPSHOT.jar
+
+docker@minishift:~$ docker run -it --rm 4c681c312f92 /bin/bash
+[jboss@b40bd806f8a6 ~]$ cd /deployments/
+[jboss@b40bd806f8a6 deployments]$ ll
+total 14564
+drwxrwxr-x 2 jboss root     4096 Jun 12 10:57 data
+-rw-r--r-- 1 jboss root 14905400 Jun 20 22:18 spring-boot-hello-world-0.0.1-SNAPSHOT.jar
+[jboss@b40bd806f8a6 deployments]$ unzip spring-boot-hello-world-0.0.1-SNAPSHOT.jar 
+Archive:  spring-boot-hello-world-0.0.1-SNAPSHOT.jar
+   creating: META-INF/
+  inflating: META-INF/MANIFEST.MF    
+   creating: BOOT-INF/
+   creating: BOOT-INF/classes/
+   creating: BOOT-INF/classes/com/
+   creating: BOOT-INF/classes/com/zenika/
+   creating: BOOT-INF/classes/com/zenika/formation/
+   creating: BOOT-INF/classes/com/zenika/formation/javadevops/
+  inflating: BOOT-INF/classes/com/zenika/formation/javadevops/DemoApplication.class  
+  inflating: BOOT-INF/classes/application.properties  
+   creating: META-INF/maven/
+   creating: META-INF/maven/com.zenika.formation.javadevops/
+   creating: META-INF/maven/com.zenika.formation.javadevops/spring-boot-hello-world/
+  inflating: META-INF/maven/com.zenika.formation.javadevops/spring-boot-hello-world/pom.xml  
+  inflating: META-INF/maven/com.zenika.formation.javadevops/spring-boot-hello-world/pom.properties  
+   creating: BOOT-INF/lib/
+ extracting: BOOT-INF/lib/spring-boot-starter-web-1.5.2.RELEASE.jar  
+ extracting: BOOT-INF/lib/spring-boot-starter-1.5.2.RELEASE.jar  
+ extracting: BOOT-INF/lib/spring-boot-1.5.2.RELEASE.jar  
+ extracting: BOOT-INF/lib/spring-boot-autoconfigure-1.5.2.RELEASE.jar  
+ extracting: BOOT-INF/lib/spring-boot-starter-logging-1.5.2.RELEASE.jar  
+ extracting: BOOT-INF/lib/logback-classic-1.1.11.jar  
+ extracting: BOOT-INF/lib/logback-core-1.1.11.jar  
+ extracting: BOOT-INF/lib/jcl-over-slf4j-1.7.24.jar  
+ extracting: BOOT-INF/lib/jul-to-slf4j-1.7.24.jar  
+ extracting: BOOT-INF/lib/log4j-over-slf4j-1.7.24.jar  
+ extracting: BOOT-INF/lib/snakeyaml-1.17.jar  
+ extracting: BOOT-INF/lib/spring-boot-starter-tomcat-1.5.2.RELEASE.jar  
+ extracting: BOOT-INF/lib/tomcat-embed-core-8.5.11.jar  
+ extracting: BOOT-INF/lib/tomcat-embed-el-8.5.11.jar  
+ extracting: BOOT-INF/lib/tomcat-embed-websocket-8.5.11.jar  
+ extracting: BOOT-INF/lib/hibernate-validator-5.3.4.Final.jar  
+ extracting: BOOT-INF/lib/validation-api-1.1.0.Final.jar  
+ extracting: BOOT-INF/lib/jboss-logging-3.3.0.Final.jar  
+ extracting: BOOT-INF/lib/classmate-1.3.3.jar  
+ extracting: BOOT-INF/lib/jackson-databind-2.8.7.jar  
+ extracting: BOOT-INF/lib/jackson-annotations-2.8.0.jar  
+ extracting: BOOT-INF/lib/jackson-core-2.8.7.jar  
+ extracting: BOOT-INF/lib/spring-web-4.3.7.RELEASE.jar  
+ extracting: BOOT-INF/lib/spring-aop-4.3.7.RELEASE.jar  
+ extracting: BOOT-INF/lib/spring-beans-4.3.7.RELEASE.jar  
+ extracting: BOOT-INF/lib/spring-context-4.3.7.RELEASE.jar  
+ extracting: BOOT-INF/lib/spring-webmvc-4.3.7.RELEASE.jar  
+ extracting: BOOT-INF/lib/spring-expression-4.3.7.RELEASE.jar  
+ extracting: BOOT-INF/lib/slf4j-api-1.7.24.jar  
+ extracting: BOOT-INF/lib/spring-core-4.3.7.RELEASE.jar  
+ extracting: BOOT-INF/lib/spring-boot-starter-actuator-1.5.2.RELEASE.jar  
+ extracting: BOOT-INF/lib/spring-boot-actuator-1.5.2.RELEASE.jar  
+   creating: org/
+   creating: org/springframework/
+   creating: org/springframework/boot/
+   creating: org/springframework/boot/loader/
+  inflating: org/springframework/boot/loader/LaunchedURLClassLoader$1.class  
+  inflating: org/springframework/boot/loader/PropertiesLauncher$ArchiveEntryFilter.class  
+  inflating: org/springframework/boot/loader/PropertiesLauncher$PrefixMatchingArchiveFilter.class  
+  inflating: org/springframework/boot/loader/Launcher.class  
+  inflating: org/springframework/boot/loader/ExecutableArchiveLauncher$1.class  
+   creating: org/springframework/boot/loader/jar/
+  inflating: org/springframework/boot/loader/jar/JarFile$1.class  
+  inflating: org/springframework/boot/loader/jar/Handler.class  
+  inflating: org/springframework/boot/loader/jar/JarEntry.class  
+  inflating: org/springframework/boot/loader/jar/JarFile$3.class  
+  inflating: org/springframework/boot/loader/jar/CentralDirectoryEndRecord.class  
+  inflating: org/springframework/boot/loader/jar/CentralDirectoryVisitor.class  
+  inflating: org/springframework/boot/loader/jar/JarFile$JarFileType.class  
+  inflating: org/springframework/boot/loader/jar/JarFileEntries.class  
+  inflating: org/springframework/boot/loader/jar/JarFile.class  
+  inflating: org/springframework/boot/loader/jar/JarFileEntries$1.class  
+  inflating: org/springframework/boot/loader/jar/JarURLConnection$1.class  
+  inflating: org/springframework/boot/loader/jar/JarFile$2.class  
+  inflating: org/springframework/boot/loader/jar/JarEntryFilter.class  
+  inflating: org/springframework/boot/loader/jar/AsciiBytes.class  
+  inflating: org/springframework/boot/loader/jar/CentralDirectoryParser.class  
+  inflating: org/springframework/boot/loader/jar/Bytes.class  
+  inflating: org/springframework/boot/loader/jar/ZipInflaterInputStream.class  
+  inflating: org/springframework/boot/loader/jar/JarFileEntries$EntryIterator.class  
+  inflating: org/springframework/boot/loader/jar/FileHeader.class  
+  inflating: org/springframework/boot/loader/jar/JarURLConnection$JarEntryName.class  
+  inflating: org/springframework/boot/loader/jar/JarURLConnection.class  
+  inflating: org/springframework/boot/loader/jar/CentralDirectoryFileHeader.class  
+   creating: org/springframework/boot/loader/data/
+  inflating: org/springframework/boot/loader/data/ByteArrayRandomAccessData.class  
+  inflating: org/springframework/boot/loader/data/RandomAccessDataFile$DataInputStream.class  
+  inflating: org/springframework/boot/loader/data/RandomAccessDataFile$FilePool.class  
+  inflating: org/springframework/boot/loader/data/RandomAccessData$ResourceAccess.class  
+  inflating: org/springframework/boot/loader/data/RandomAccessDataFile.class  
+  inflating: org/springframework/boot/loader/data/RandomAccessData.class  
+  inflating: org/springframework/boot/loader/LaunchedURLClassLoader.class  
+  inflating: org/springframework/boot/loader/JarLauncher.class  
+  inflating: org/springframework/boot/loader/MainMethodRunner.class  
+  inflating: org/springframework/boot/loader/PropertiesLauncher$1.class  
+  inflating: org/springframework/boot/loader/ExecutableArchiveLauncher.class  
+  inflating: org/springframework/boot/loader/WarLauncher.class  
+   creating: org/springframework/boot/loader/archive/
+  inflating: org/springframework/boot/loader/archive/JarFileArchive$EntryIterator.class  
+  inflating: org/springframework/boot/loader/archive/ExplodedArchive$FileEntryIterator.class  
+  inflating: org/springframework/boot/loader/archive/ExplodedArchive$FileEntry.class  
+  inflating: org/springframework/boot/loader/archive/JarFileArchive$JarFileEntry.class  
+  inflating: org/springframework/boot/loader/archive/Archive$Entry.class  
+  inflating: org/springframework/boot/loader/archive/JarFileArchive.class  
+  inflating: org/springframework/boot/loader/archive/ExplodedArchive.class  
+  inflating: org/springframework/boot/loader/archive/Archive.class  
+  inflating: org/springframework/boot/loader/archive/ExplodedArchive$FileEntryIterator$EntryComparator.class  
+  inflating: org/springframework/boot/loader/archive/Archive$EntryFilter.class  
+  inflating: org/springframework/boot/loader/archive/ExplodedArchive$1.class  
+  inflating: org/springframework/boot/loader/PropertiesLauncher.class  
+   creating: org/springframework/boot/loader/util/
+  inflating: org/springframework/boot/loader/util/SystemPropertyUtils.class  
+[jboss@b40bd806f8a6 deployments]$ cat META-INF/MANIFEST.MF 
+Manifest-Version: 1.0
+Implementation-Title: spring-boot-hello-world
+Implementation-Version: 0.0.1-SNAPSHOT
+Archiver-Version: Plexus Archiver
+Built-By: jboss
+Implementation-Vendor-Id: com.zenika.formation.javadevops
+Spring-Boot-Version: 1.5.2.RELEASE
+Implementation-Vendor: Pivotal Software, Inc.
+Main-Class: org.springframework.boot.loader.JarLauncher
+Start-Class: com.zenika.formation.javadevops.DemoApplication
+Spring-Boot-Classes: BOOT-INF/classes/
+Spring-Boot-Lib: BOOT-INF/lib/
+Created-By: Apache Maven 3.3.9
+Build-Jdk: 1.8.0_131
+Implementation-URL: http://projects.spring.io/spring-boot/spring-boot-
+ hello-world/
+
+[jboss@b40bd806f8a6 deployments]$ exit
+
+==> Effectivement le packaging a bcp changé
+
+
+------------------------------------------------------------------------------------------------------------------------------------
+Comparaison des dépendances du projet lorsqu'on passe à spring-cloud-kubernetes
+
+# Avant (commit 88da220), (dependencyManagement via org.springframework.boot:spring-boot-starter-parent:1.5.2.RELEASE)
+
+$ mvn  dependency:tree
+[INFO] Scanning for projects...
+[INFO] 
+[INFO] ------------------------------------------------------------------------
+[INFO] Building spring-boot-hello-world 0.0.1-SNAPSHOT
+[INFO] ------------------------------------------------------------------------
+[INFO] 
+[INFO] --- maven-dependency-plugin:2.10:tree (default-cli) @ spring-boot-hello-world ---
+[INFO] com.zenika.formation.javadevops:spring-boot-hello-world:jar:0.0.1-SNAPSHOT
+[INFO] +- org.springframework.boot:spring-boot-starter-web:jar:1.5.2.RELEASE:compile
+[INFO] |  +- org.springframework.boot:spring-boot-starter:jar:1.5.2.RELEASE:compile
+[INFO] |  |  +- org.springframework.boot:spring-boot:jar:1.5.2.RELEASE:compile
+[INFO] |  |  +- org.springframework.boot:spring-boot-autoconfigure:jar:1.5.2.RELEASE:compile
+[INFO] |  |  +- org.springframework.boot:spring-boot-starter-logging:jar:1.5.2.RELEASE:compile
+[INFO] |  |  |  +- ch.qos.logback:logback-classic:jar:1.1.11:compile
+[INFO] |  |  |  |  \- ch.qos.logback:logback-core:jar:1.1.11:compile
+[INFO] |  |  |  +- org.slf4j:jcl-over-slf4j:jar:1.7.24:compile
+[INFO] |  |  |  +- org.slf4j:jul-to-slf4j:jar:1.7.24:compile
+[INFO] |  |  |  \- org.slf4j:log4j-over-slf4j:jar:1.7.24:compile
+[INFO] |  |  \- org.yaml:snakeyaml:jar:1.17:runtime
+[INFO] |  +- org.springframework.boot:spring-boot-starter-tomcat:jar:1.5.2.RELEASE:compile
+[INFO] |  |  +- org.apache.tomcat.embed:tomcat-embed-core:jar:8.5.11:compile
+[INFO] |  |  +- org.apache.tomcat.embed:tomcat-embed-el:jar:8.5.11:compile
+[INFO] |  |  \- org.apache.tomcat.embed:tomcat-embed-websocket:jar:8.5.11:compile
+[INFO] |  +- org.hibernate:hibernate-validator:jar:5.3.4.Final:compile
+[INFO] |  |  +- javax.validation:validation-api:jar:1.1.0.Final:compile
+[INFO] |  |  +- org.jboss.logging:jboss-logging:jar:3.3.0.Final:compile
+[INFO] |  |  \- com.fasterxml:classmate:jar:1.3.3:compile
+[INFO] |  +- com.fasterxml.jackson.core:jackson-databind:jar:2.8.7:compile
+[INFO] |  |  +- com.fasterxml.jackson.core:jackson-annotations:jar:2.8.0:compile
+[INFO] |  |  \- com.fasterxml.jackson.core:jackson-core:jar:2.8.7:compile
+[INFO] |  +- org.springframework:spring-web:jar:4.3.7.RELEASE:compile
+[INFO] |  |  +- org.springframework:spring-aop:jar:4.3.7.RELEASE:compile
+[INFO] |  |  +- org.springframework:spring-beans:jar:4.3.7.RELEASE:compile
+[INFO] |  |  \- org.springframework:spring-context:jar:4.3.7.RELEASE:compile
+[INFO] |  \- org.springframework:spring-webmvc:jar:4.3.7.RELEASE:compile
+[INFO] |     \- org.springframework:spring-expression:jar:4.3.7.RELEASE:compile
+[INFO] +- org.springframework.boot:spring-boot-starter-test:jar:1.5.2.RELEASE:test
+[INFO] |  +- org.springframework.boot:spring-boot-test:jar:1.5.2.RELEASE:test
+[INFO] |  +- org.springframework.boot:spring-boot-test-autoconfigure:jar:1.5.2.RELEASE:test
+[INFO] |  +- com.jayway.jsonpath:json-path:jar:2.2.0:test
+[INFO] |  |  +- net.minidev:json-smart:jar:2.2.1:test
+[INFO] |  |  |  \- net.minidev:accessors-smart:jar:1.1:test
+[INFO] |  |  |     \- org.ow2.asm:asm:jar:5.0.3:test
+[INFO] |  |  \- org.slf4j:slf4j-api:jar:1.7.24:compile
+[INFO] |  +- junit:junit:jar:4.12:test
+[INFO] |  +- org.assertj:assertj-core:jar:2.6.0:test
+[INFO] |  +- org.mockito:mockito-core:jar:1.10.19:test
+[INFO] |  |  \- org.objenesis:objenesis:jar:2.1:test
+[INFO] |  +- org.hamcrest:hamcrest-core:jar:1.3:test
+[INFO] |  +- org.hamcrest:hamcrest-library:jar:1.3:test
+[INFO] |  +- org.skyscreamer:jsonassert:jar:1.4.0:test
+[INFO] |  |  \- com.vaadin.external.google:android-json:jar:0.0.20131108.vaadin1:test
+[INFO] |  +- org.springframework:spring-core:jar:4.3.7.RELEASE:compile
+[INFO] |  \- org.springframework:spring-test:jar:4.3.7.RELEASE:test
+[INFO] \- org.springframework.boot:spring-boot-starter-actuator:jar:1.5.2.RELEASE:compile
+[INFO]    \- org.springframework.boot:spring-boot-actuator:jar:1.5.2.RELEASE:compile
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD SUCCESS
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time: 0.971 s
+[INFO] Finished at: 2017-06-21T11:25:23+02:00
+[INFO] Final Memory: 21M/303M
+[INFO] ------------------------------------------------------------------------
+
+$ mvn dependency:resolve-plugins  | grep spring-boot-maven-plugin
+[INFO] Plugin Resolved: spring-boot-maven-plugin-1.5.2.RELEASE.jar
+
+
+# Après (dependencyManagement via io.fabric8:spring-cloud-kubernetes-project:0.1.6, branche spring-cloud-kubernetes-integration)
+$ mvn  dependency:tree
+[INFO] Scanning for projects...
+[WARNING] 
+[WARNING] Some problems were encountered while building the effective model for com.zenika.formation.javadevops:spring-boot-hello-world:jar:0.0.1-SNAPSHOT
+[WARNING] 'build.plugins.plugin.version' for org.springframework.boot:spring-boot-maven-plugin is missing. @ line 62, column 12
+[WARNING] 
+[WARNING] It is highly recommended to fix these problems because they threaten the stability of your build.
+[WARNING] 
+[WARNING] For this reason, future Maven versions might no longer support building such malformed projects.
+[WARNING] 
+[INFO] 
+[INFO] ------------------------------------------------------------------------
+[INFO] Building spring-boot-hello-world 0.0.1-SNAPSHOT
+[INFO] ------------------------------------------------------------------------
+[INFO] 
+[INFO] --- maven-dependency-plugin:2.8:tree (default-cli) @ spring-boot-hello-world ---
+[INFO] com.zenika.formation.javadevops:spring-boot-hello-world:jar:0.0.1-SNAPSHOT
+[INFO] +- org.springframework.boot:spring-boot-starter-web:jar:1.5.1.RELEASE:compile
+[INFO] |  +- org.springframework.boot:spring-boot-starter:jar:1.5.1.RELEASE:compile
+[INFO] |  |  +- org.springframework.boot:spring-boot:jar:1.5.1.RELEASE:compile
+[INFO] |  |  +- org.springframework.boot:spring-boot-autoconfigure:jar:1.5.1.RELEASE:compile
+[INFO] |  |  +- org.springframework.boot:spring-boot-starter-logging:jar:1.5.1.RELEASE:compile
+[INFO] |  |  |  +- ch.qos.logback:logback-classic:jar:1.1.9:compile
+[INFO] |  |  |  |  \- ch.qos.logback:logback-core:jar:1.1.9:compile
+[INFO] |  |  |  +- org.slf4j:jcl-over-slf4j:jar:1.7.22:compile
+[INFO] |  |  |  +- org.slf4j:jul-to-slf4j:jar:1.7.22:compile
+[INFO] |  |  |  \- org.slf4j:log4j-over-slf4j:jar:1.7.22:compile
+[INFO] |  |  \- org.yaml:snakeyaml:jar:1.17:runtime
+[INFO] |  +- org.springframework.boot:spring-boot-starter-tomcat:jar:1.5.1.RELEASE:compile
+[INFO] |  |  +- org.apache.tomcat.embed:tomcat-embed-core:jar:8.5.11:compile
+[INFO] |  |  +- org.apache.tomcat.embed:tomcat-embed-el:jar:8.5.11:compile
+[INFO] |  |  \- org.apache.tomcat.embed:tomcat-embed-websocket:jar:8.5.11:compile
+[INFO] |  +- org.hibernate:hibernate-validator:jar:5.3.4.Final:compile
+[INFO] |  |  +- javax.validation:validation-api:jar:1.1.0.Final:compile
+[INFO] |  |  +- org.jboss.logging:jboss-logging:jar:3.3.0.Final:compile
+[INFO] |  |  \- com.fasterxml:classmate:jar:1.3.3:compile
+[INFO] |  +- com.fasterxml.jackson.core:jackson-databind:jar:2.7.7:compile
+[INFO] |  |  +- com.fasterxml.jackson.core:jackson-annotations:jar:2.7.0:compile
+[INFO] |  |  \- com.fasterxml.jackson.core:jackson-core:jar:2.7.7:compile
+[INFO] |  +- org.springframework:spring-web:jar:4.3.3.RELEASE:compile
+[INFO] |  |  +- org.springframework:spring-aop:jar:4.3.6.RELEASE:compile
+[INFO] |  |  +- org.springframework:spring-beans:jar:4.3.6.RELEASE:compile
+[INFO] |  |  \- org.springframework:spring-context:jar:4.3.6.RELEASE:compile
+[INFO] |  \- org.springframework:spring-webmvc:jar:4.3.6.RELEASE:compile
+[INFO] |     \- org.springframework:spring-expression:jar:4.3.6.RELEASE:compile
+[INFO] +- org.springframework.boot:spring-boot-starter-test:jar:1.5.1.RELEASE:test
+[INFO] |  +- org.springframework.boot:spring-boot-test:jar:1.5.1.RELEASE:test
+[INFO] |  +- org.springframework.boot:spring-boot-test-autoconfigure:jar:1.5.1.RELEASE:test
+[INFO] |  +- com.jayway.jsonpath:json-path:jar:2.2.0:test
+[INFO] |  |  +- net.minidev:json-smart:jar:2.2.1:test
+[INFO] |  |  |  \- net.minidev:accessors-smart:jar:1.1:test
+[INFO] |  |  |     \- org.ow2.asm:asm:jar:5.0.3:test
+[INFO] |  |  \- org.slf4j:slf4j-api:jar:1.7.22:compile
+[INFO] |  +- junit:junit:jar:4.12:test
+[INFO] |  +- org.assertj:assertj-core:jar:2.6.0:test
+[INFO] |  +- org.mockito:mockito-core:jar:1.10.19:test
+[INFO] |  |  \- org.objenesis:objenesis:jar:2.1:test
+[INFO] |  +- org.hamcrest:hamcrest-core:jar:1.3:test
+[INFO] |  +- org.hamcrest:hamcrest-library:jar:1.3:test
+[INFO] |  +- org.skyscreamer:jsonassert:jar:1.4.0:test
+[INFO] |  |  \- com.vaadin.external.google:android-json:jar:0.0.20131108.vaadin1:test
+[INFO] |  +- org.springframework:spring-core:jar:4.3.6.RELEASE:compile
+[INFO] |  \- org.springframework:spring-test:jar:4.3.6.RELEASE:test
+[INFO] \- org.springframework.boot:spring-boot-starter-actuator:jar:1.5.1.RELEASE:compile
+[INFO]    \- org.springframework.boot:spring-boot-actuator:jar:1.5.1.RELEASE:compile
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD SUCCESS
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time: 1.049 s
+[INFO] Finished at: 2017-06-21T11:28:15+02:00
+[INFO] Final Memory: 19M/303M
+[INFO] ------------------------------------------------------------------------
+
+$ mvn dependency:resolve-plugins  | grep spring-boot-maven-plugin
+[WARNING] 'build.plugins.plugin.version' for org.springframework.boot:spring-boot-maven-plugin is missing. @ line 62, column 12
+[INFO] Plugin Resolved: spring-boot-maven-plugin-1.5.4.RELEASE.ja
+
+# Constat 
+==> org.springframework.boot:spring-boot-maven-plugin n'a pas de version spécifiée "après"
+==> spring-boot-* passe de 1.5.2.RELEASE en 1.5.1.RELEASE
+==> ch.qos.logback:logback-* passe de 1.1.11 en 1.1.9
+etc
+
+==> Versions majeures impactées
+
+==> Une fois commitée, la version spring-cloud-kubernetes-integration ne package pas bien dans openshift
+
+# Ligne de commande du build Openshift
+$ mvn -Dmaven.repo.local=/tmp/artifacts/m2 -s /tmp/artifacts/configuration/settings.xml -e -Popenshift -DskipTests -Dcom.redhat.xpaas.repo.redhatga -Dfabric8.skip=true package -Djava.net.preferIPv4Stack=true
+
+# Equivalent en local 
+$ mvn -s ./settings-openjdk18-openshift.xml -e -Popenshift -DskipTests -Dcom.redhat.xpaas.repo.redhatga -Dfabric8.skip=true package -Djava.net.preferIPv4Stack=true
+
+==> Effectivement, le packaging est tout pourri qd on build avec la dépendance sur spring-cloud-kubernetes-*
+
+			<plugin>
+				<groupId>org.springframework.boot</groupId>
+				<artifactId>spring-boot-maven-plugin</artifactId>
+				<version>${spring-boot.version}</version>
+				<executions>
+					<execution>
+						<goals>
+							<goal>repackage</goal>
+						</goals>
+					</execution>
+				</executions>
+			</plugin>
+==> L'ajout de la section "<execution><execution><goals><goal>repackage</goal></goals></execution></executions>" résoud le pb du packaging !!!
+
+==> L'application se déploie bien maintenant sur les environnements (development/integration) d'Openshift, mais maintenant il y a un pb d'accès à Kubernetes
+
+Logs du pod dans l'environnement development:
+
+```
+10:34:45.325 [main] DEBUG io.fabric8.kubernetes.client.Config - Trying to configure client from Kubernetes config...
+10:34:45.343 [main] DEBUG io.fabric8.kubernetes.client.Config - Did not find Kubernetes config at: [/home/jboss/.kube/config]. Ignoring.
+10:34:45.344 [main] DEBUG io.fabric8.kubernetes.client.Config - Trying to configure client from service account...
+10:34:45.344 [main] DEBUG io.fabric8.kubernetes.client.Config - Found service account ca cert at: [/var/run/secrets/kubernetes.io/serviceaccount/ca.crt].
+10:34:45.352 [main] DEBUG io.fabric8.kubernetes.client.Config - Found service account token at: [/var/run/secrets/kubernetes.io/serviceaccount/token].
+10:34:45.352 [main] DEBUG io.fabric8.kubernetes.client.Config - Trying to configure client namespace from Kubernetes service account namespace path...
+10:34:45.353 [main] DEBUG io.fabric8.kubernetes.client.Config - Found service account namespace at: [/var/run/secrets/kubernetes.io/serviceaccount/namespace].
+2017-06-21 10:34:46.758  WARN 1 --- [           main] i.f.s.cloud.kubernetes.StandardPodUtils  : Failed to get pod with name:[spring-boot-hello-world-21-697sp]. You should look into this if things aren't working as you expect. Are you missing serviceaccount permissions?
+
+io.fabric8.kubernetes.client.KubernetesClientException: Failure executing: GET at: https://kubernetes.default.svc/api/v1/namespaces/development/pods/spring-boot-hello-world-21-697sp. Message: Forbidden!Configured service account doesn't have access. Service account may have been revoked..
+	at io.fabric8.kubernetes.client.dsl.base.OperationSupport.requestFailure(OperationSupport.java:320) ~[kubernetes-client-2.2.0.jar!/:na]
+	at io.fabric8.kubernetes.client.dsl.base.OperationSupport.assertResponseCode(OperationSupport.java:267) ~[kubernetes-client-2.2.0.jar!/:na]
+	at io.fabric8.kubernetes.client.dsl.base.OperationSupport.handleResponse(OperationSupport.java:239) ~[kubernetes-client-2.2.0.jar!/:na]
+	at io.fabric8.kubernetes.client.dsl.base.OperationSupport.handleResponse(OperationSupport.java:232) ~[kubernetes-client-2.2.0.jar!/:na]
+	at io.fabric8.kubernetes.client.dsl.base.OperationSupport.handleGet(OperationSupport.java:228) ~[kubernetes-client-2.2.0.jar!/:na]
+	at io.fabric8.kubernetes.client.dsl.base.BaseOperation.handleGet(BaseOperation.java:711) ~[kubernetes-client-2.2.0.jar!/:na]
+	at io.fabric8.kubernetes.client.dsl.base.BaseOperation.get(BaseOperation.java:192) ~[kubernetes-client-2.2.0.jar!/:na]
+	at io.fabric8.spring.cloud.kubernetes.StandardPodUtils.internalGetPod(StandardPodUtils.java:56) [spring-cloud-kubernetes-core-0.1.6.jar!/:na]
+	at io.fabric8.spring.cloud.kubernetes.StandardPodUtils.lambda$new$0(StandardPodUtils.java:40) [spring-cloud-kubernetes-core-0.1.6.jar!/:na]
+	at io.fabric8.spring.cloud.kubernetes.LazilyInstantiate.swapper(LazilyInstantiate.java:41) ~[spring-cloud-kubernetes-core-0.1.6.jar!/:na]
+	at io.fabric8.spring.cloud.kubernetes.LazilyInstantiate.lambda$new$0(LazilyInstantiate.java:34) ~[spring-cloud-kubernetes-core-0.1.6.jar!/:na]
+	at io.fabric8.spring.cloud.kubernetes.LazilyInstantiate.get(LazilyInstantiate.java:29) ~[spring-cloud-kubernetes-core-0.1.6.jar!/:na]
+	at io.fabric8.spring.cloud.kubernetes.profile.KubernetesProfileApplicationListener.addKubernetesProfile(KubernetesProfileApplicationListener.java:49) ~[spring-cloud-kubernetes-core-0.1.6.jar!/:na]
+	at io.fabric8.spring.cloud.kubernetes.profile.KubernetesApplicationContextInitializer.initialize(KubernetesApplicationContextInitializer.java:53) ~[spring-cloud-kubernetes-core-0.1.6.jar!/:na]
+	at org.springframework.boot.SpringApplication.applyInitializers(SpringApplication.java:611) ~[spring-boot-1.5.1.RELEASE.jar!/:1.5.1.RELEASE]
+	at org.springframework.boot.SpringApplication.prepareContext(SpringApplication.java:348) ~[spring-boot-1.5.1.RELEASE.jar!/:1.5.1.RELEASE]
+	at org.springframework.boot.SpringApplication.run(SpringApplication.java:312) ~[spring-boot-1.5.1.RELEASE.jar!/:1.5.1.RELEASE]
+	at org.springframework.boot.builder.SpringApplicationBuilder.run(SpringApplicationBuilder.java:134) ~[spring-boot-1.5.1.RELEASE.jar!/:1.5.1.RELEASE]
+	at org.springframework.cloud.bootstrap.BootstrapApplicationListener.bootstrapServiceContext(BootstrapApplicationListener.java:138) ~[spring-cloud-context-1.1.7.RELEASE.jar!/:1.1.7.RELEASE]
+	at org.springframework.cloud.bootstrap.BootstrapApplicationListener.onApplicationEvent(BootstrapApplicationListener.java:84) ~[spring-cloud-context-1.1.7.RELEASE.jar!/:1.1.7.RELEASE]
+	at org.springframework.cloud.bootstrap.BootstrapApplicationListener.onApplicationEvent(BootstrapApplicationListener.java:62) ~[spring-cloud-context-1.1.7.RELEASE.jar!/:1.1.7.RELEASE]
+	at org.springframework.context.event.SimpleApplicationEventMulticaster.invokeListener(SimpleApplicationEventMulticaster.java:167) ~[spring-context-4.3.6.RELEASE.jar!/:4.3.6.RELEASE]
+	at org.springframework.context.event.SimpleApplicationEventMulticaster.multicastEvent(SimpleApplicationEventMulticaster.java:139) ~[spring-context-4.3.6.RELEASE.jar!/:4.3.6.RELEASE]
+	at org.springframework.context.event.SimpleApplicationEventMulticaster.multicastEvent(SimpleApplicationEventMulticaster.java:122) ~[spring-context-4.3.6.RELEASE.jar!/:4.3.6.RELEASE]
+	at org.springframework.boot.context.event.EventPublishingRunListener.environmentPrepared(EventPublishingRunListener.java:73) ~[spring-boot-1.5.1.RELEASE.jar!/:1.5.1.RELEASE]
+	at org.springframework.boot.SpringApplicationRunListeners.environmentPrepared(SpringApplicationRunListeners.java:54) ~[spring-boot-1.5.1.RELEASE.jar!/:1.5.1.RELEASE]
+	at org.springframework.boot.SpringApplication.prepareEnvironment(SpringApplication.java:336) ~[spring-boot-1.5.1.RELEASE.jar!/:1.5.1.RELEASE]
+	at org.springframework.boot.SpringApplication.run(SpringApplication.java:307) ~[spring-boot-1.5.1.RELEASE.jar!/:1.5.1.RELEASE]
+	at org.springframework.boot.SpringApplication.run(SpringApplication.java:1162) ~[spring-boot-1.5.1.RELEASE.jar!/:1.5.1.RELEASE]
+	at org.springframework.boot.SpringApplication.run(SpringApplication.java:1151) ~[spring-boot-1.5.1.RELEASE.jar!/:1.5.1.RELEASE]
+	at com.zenika.formation.javadevops.DemoApplication.main(DemoApplication.java:37) ~[classes!/:na]
+	at sun.reflect.NativeMethodAccessorImpl.invoke0(Native Method) ~[na:1.8.0_131]
+	at sun.reflect.NativeMethodAccessorImpl.invoke(NativeMethodAccessorImpl.java:62) ~[na:1.8.0_131]
+	at sun.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:43) ~[na:1.8.0_131]
+	at java.lang.reflect.Method.invoke(Method.java:498) ~[na:1.8.0_131]
+	at org.springframework.boot.loader.MainMethodRunner.run(MainMethodRunner.java:48) ~[spring-boot-hello-world-0.0.3-SNAPSHOT.jar:na]
+	at org.springframework.boot.loader.Launcher.launch(Launcher.java:87) ~[spring-boot-hello-world-0.0.3-SNAPSHOT.jar:na]
+	at org.springframework.boot.loader.Launcher.launch(Launcher.java:50) ~[spring-boot-hello-world-0.0.3-SNAPSHOT.jar:na]
+	at org.springframework.boot.loader.JarLauncher.main(JarLauncher.java:51) ~[spring-boot-hello-world-0.0.3-SNAPSHOT.jar:na]
+```
+
+==> Selon le blog https://www.nicolaferraro.me/2016/10/23/hot-reconfiguration-of-microservices-on-kubernetes/, 
+	il faut ajouter le role "view" au serviceaccount "default"
+oc policy add-role-to-user view --serviceaccount=default
+
+==> Et ça maaaaaaaaarche
+
